@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calc/Panel — A Precision Calculator</title>
+<meta name="description" content="A modern calculator with scientific mode, memory functions, and a paper-tape calculation history." />
+
+<!-- Space Mono for the LCD digits (a nod to real seven-segment displays), Inter for labels -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- ============ CALCULATOR PANEL ============ -->
+    <main class="panel" id="panel">
+
+      <!-- Panel top strip: brand + utility toggles -->
+      <div class="panel-strip">
+        <span class="brand">CALC<span class="brand-slash">/</span>PANEL</span>
+        <div class="strip-actions">
+          <button class="chip-btn" id="soundToggle" title="Toggle sound" aria-label="Toggle sound effects" aria-pressed="true">
+            <svg viewBox="0 0 24 24" class="icon icon-sound-on"><path fill="currentColor" d="M3 10v4h4l5 5V5L7 10zm13.5 2A4.5 4.5 0 0 0 14 7.97v8.05A4.5 4.5 0 0 0 16.5 12M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77"/></svg>
+            <svg viewBox="0 0 24 24" class="icon icon-sound-off"><path fill="currentColor" d="M16.5 12A4.5 4.5 0 0 0 14 7.97v1.79l4.45 4.45c.03-.24.05-.47.05-.71M19 12c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3L3 4.27L7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.17v2.06a8.99 8.99 0 0 0 3.69-1.81L18.73 21L20 19.73l-9-9zM12 4L9.91 6.09L12 8.18z"/></svg>
+          </button>
+          <button class="chip-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle dark and light mode">
+            <svg viewBox="0 0 24 24" class="icon icon-sun"><path fill="currentColor" d="M12 7a5 5 0 1 0 5 5a5 5 0 0 0-5-5m0 12a1 1 0 0 1-1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1-1 1m0-16a1 1 0 0 1-1-1V1a1 1 0 0 1 2 0v1a1 1 0 0 1-1 1m9 8a1 1 0 0 1-1 1h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 1 1M4 12a1 1 0 0 1-1 1H2a1 1 0 0 1 0-2h1a1 1 0 0 1 1 1m14.36 6.36a1 1 0 0 1-1.41 0l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41M6.76 6.76a1 1 0 0 1-1.41 0l-.71-.71A1 1 0 0 1 6.05 4.64l.71.71a1 1 0 0 1 0 1.41m11.6-2.12a1 1 0 0 1 0 1.41l-.71.71a1 1 0 1 1-1.41-1.41l.71-.71a1 1 0 0 1 1.41 0M6.05 19.36a1 1 0 0 1 0-1.41l.71-.71a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1-1.41 0"/></svg>
+            <svg viewBox="0 0 24 24" class="icon icon-moon"><path fill="currentColor" d="M12.3 22a9.8 9.8 0 0 1-9.79-10.2A9.9 9.9 0 0 1 10.9 2a1 1 0 0 1 .8 1.7a7.06 7.06 0 0 0 5 12a7.4 7.4 0 0 0 3.4-.83a1 1 0 0 1 1.36 1.32A9.8 9.8 0 0 1 12.3 22"/></svg>
+          </button>
+          <button class="chip-btn" id="historyToggle" title="Show tape" aria-label="Show calculation history" aria-pressed="false">
+            <svg viewBox="0 0 24 24" class="icon"><path fill="currentColor" d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89l.07.14L9 12H6a7 7 0 1 1 7 7a6.9 6.9 0 0 1-4.29-1.5L7.29 19A9 9 0 1 0 13 3m-1 5v5l4.28 2.54l.72-1.21l-3.5-2.08V8Z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mode switch: Standard / Scientific -->
+      <div class="mode-switch" role="tablist" aria-label="Calculator mode">
+        <button class="mode-btn active" data-mode="standard" role="tab" aria-selected="true">Standard</button>
+        <button class="mode-btn" data-mode="scientific" role="tab" aria-selected="false">Scientific</button>
+      </div>
+
+      <!-- ============ DISPLAY (LCD) ============ -->
+      <div class="lcd">
+        <div class="lcd-row-top">
+          <span class="lcd-expression" id="expression">&nbsp;</span>
+          <span class="mem-indicator" id="memIndicator" hidden>M</span>
+        </div>
+        <div class="lcd-row-main">
+          <span class="lcd-result" id="result">0</span>
+          <button class="copy-btn" id="copyBtn" title="Copy result" aria-label="Copy result to clipboard">
+            <svg viewBox="0 0 24 24" class="icon"><path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2m0 16H8V7h11z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============ MEMORY ROW ============ -->
+      <div class="btn-row memory-row">
+        <button class="btn btn-mem" data-mem="mc">MC</button>
+        <button class="btn btn-mem" data-mem="mr">MR</button>
+        <button class="btn btn-mem" data-mem="m-plus">M+</button>
+        <button class="btn btn-mem" data-mem="m-minus">M&minus;</button>
+      </div>
+
+      <!-- ============ SCIENTIFIC ROWS (hidden in standard mode) ============ -->
+      <div class="sci-grid" id="sciGrid" hidden>
+        <button class="btn btn-sci" data-sci="sin">sin</button>
+        <button class="btn btn-sci" data-sci="cos">cos</button>
+        <button class="btn btn-sci" data-sci="tan">tan</button>
+        <button class="btn btn-sci" data-sci="log">log</button>
+        <button class="btn btn-sci" data-sci="sqrt">&radic;x</button>
+        <button class="btn btn-sci" data-sci="square">x&sup2;</button>
+        <button class="btn btn-sci" data-op="^">x<sup>y</sup></button>
+        <button class="btn btn-sci" data-sci="pi">&pi;</button>
+      </div>
+
+      <!-- ============ MAIN KEYPAD ============ -->
+      <div class="keypad">
+        <button class="btn btn-func" data-action="clear">C</button>
+        <button class="btn btn-func" data-action="backspace" aria-label="Backspace">&#9003;</button>
+        <button class="btn btn-func" data-op="%">%</button>
+        <button class="btn btn-op" data-op="/">&divide;</button>
+
+        <button class="btn btn-num" data-num="7">7</button>
+        <button class="btn btn-num" data-num="8">8</button>
+        <button class="btn btn-num" data-num="9">9</button>
+        <button class="btn btn-op" data-op="*">&times;</button>
+
+        <button class="btn btn-num" data-num="4">4</button>
+        <button class="btn btn-num" data-num="5">5</button>
+        <button class="btn btn-num" data-num="6">6</button>
+        <button class="btn btn-op" data-op="-">&minus;</button>
+
+        <button class="btn btn-num" data-num="1">1</button>
+        <button class="btn btn-num" data-num="2">2</button>
+        <button class="btn btn-num" data-num="3">3</button>
+        <button class="btn btn-op" data-op="+">+</button>
+
+        <button class="btn btn-num btn-zero" data-num="0">0</button>
+        <button class="btn btn-num" data-action="decimal">.</button>
+        <button class="btn btn-equals" data-action="equals">=</button>
+      </div>
+    </main>
+
+    <!-- ============ PAPER TAPE / HISTORY ============ -->
+    <aside class="tape" id="tape" aria-label="Calculation history">
+      <div class="tape-head">
+        <span>Tape</span>
+        <button class="tape-clear" id="clearHistory" aria-label="Clear history">Clear</button>
+      </div>
+      <div class="tape-feed" id="tapeFeed">
+        <p class="tape-empty" id="tapeEmpty">No calculations yet.</p>
+      </div>
+    </aside>
+
+  </div>
+
+<script src="script.js"></script>
+</body>
+</html>
