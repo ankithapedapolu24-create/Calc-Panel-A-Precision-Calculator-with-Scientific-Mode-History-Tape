@@ -1,0 +1,436 @@
+/* =========================================================================
+   CALC/PANEL — Precision Calculator
+   Design language: an instrument panel. Amber phosphor LCD (the display
+   never inverts to light mode — a real screen stays a screen), teal
+   operator accents, and a paper-tape history that unspools to the side
+   like an old adding machine receipt.
+   ========================================================================= */
+
+:root{
+  /* ---- Color tokens (dark / default) ---- */
+  --bg: #14171a;
+  --panel: #1d2226;
+  --panel-2: #262b30;
+  --panel-3: #2e343a;
+  --text: #ececeb;
+  --muted: #8b9096;
+  --line: #343a40;
+
+  --lcd-bg: #0b0d0a;
+  --lcd-text: #ffb545;
+  --lcd-dim: rgba(255,181,69,0.4);
+  --lcd-glow: rgba(255,181,69,0.25);
+
+  --op: #4fd1c5;
+  --op-strong: #38b2ac;
+  --danger: #e2604f;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --transition: 0.18s cubic-bezier(.4,0,.2,1);
+
+  --font-display: 'Space Mono', monospace;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+body.light{
+  --bg: #eceeec;
+  --panel: #ffffff;
+  --panel-2: #f2f3f0;
+  --panel-3: #e7e9e5;
+  --text: #16191a;
+  --muted: #676b6d;
+  --line: #dee1dd;
+
+  --op: #0f9c92;
+  --op-strong: #0b7d75;
+  --danger: #d1503f;
+}
+
+*{ box-sizing: border-box; }
+
+body{
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  transition: background var(--transition), color var(--transition);
+  -webkit-font-smoothing: antialiased;
+}
+
+button{ font-family: inherit; cursor: pointer; border: none; }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* =========================================================================
+   APP SHELL
+   ========================================================================= */
+.app{
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+}
+
+/* =========================================================================
+   PANEL
+   ========================================================================= */
+.panel{
+  width: 380px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 30px 60px -30px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panel-strip{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand{
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.brand-slash{ color: var(--op); }
+
+.strip-actions{ display: flex; gap: 6px; }
+
+.chip-btn{
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  transition: color var(--transition), border-color var(--transition), transform var(--transition);
+}
+.chip-btn:hover{ color: var(--text); border-color: var(--op); }
+.chip-btn:active{ transform: scale(0.92); }
+.chip-btn.active-state{ color: var(--op); border-color: var(--op); }
+.chip-btn .icon{ width: 15px; height: 15px; position: absolute; transition: opacity var(--transition); }
+
+/* sound icon swap */
+.icon-sound-off{ opacity: 0; }
+.icon-sound-on{ opacity: 1; }
+#soundToggle[aria-pressed="false"] .icon-sound-on{ opacity: 0; }
+#soundToggle[aria-pressed="false"] .icon-sound-off{ opacity: 1; }
+
+/* theme icon swap */
+.icon-sun{ opacity: 0; transform: rotate(-30deg) scale(0.6); }
+.icon-moon{ opacity: 1; transform: rotate(0) scale(1); }
+body.light .icon-sun{ opacity: 1; transform: rotate(0) scale(1); }
+body.light .icon-moon{ opacity: 0; transform: rotate(30deg) scale(0.6); }
+
+/* =========================================================================
+   MODE SWITCH
+   ========================================================================= */
+.mode-switch{
+  display: flex;
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 3px;
+  border: 1px solid var(--line);
+}
+.mode-btn{
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: all var(--transition);
+}
+.mode-btn.active{
+  background: linear-gradient(135deg, var(--op), var(--op-strong));
+  color: #0a1210;
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--op) 60%, transparent);
+}
+
+/* =========================================================================
+   LCD DISPLAY
+   ========================================================================= */
+.lcd{
+  background: var(--lcd-bg);
+  border-radius: var(--radius-sm);
+  padding: 18px 16px 14px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);
+}
+
+/* faint scanline texture — subtle, not decorative overkill */
+.lcd::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255,255,255,0.015) 0px,
+    rgba(255,255,255,0.015) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+}
+
+.lcd-row-top{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+}
+
+.lcd-expression{
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--lcd-dim);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow-x: auto;
+  max-width: 85%;
+}
+
+.mem-indicator{
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--lcd-text);
+  border: 1px solid var(--lcd-dim);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.lcd-row-main{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.lcd-result{
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 7vw, 2.6rem);
+  color: var(--lcd-text);
+  text-shadow: 0 0 18px var(--lcd-glow);
+  overflow-x: auto;
+  white-space: nowrap;
+  max-width: 84%;
+  scrollbar-width: none;
+}
+.lcd-result::-webkit-scrollbar{ display: none; }
+
+.lcd-result.error{ color: var(--danger); font-size: 1.5rem; }
+
+.copy-btn{
+  width: 30px; height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255,181,69,0.1);
+  color: var(--lcd-text);
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--transition), transform var(--transition);
+}
+.copy-btn .icon{ width: 14px; height: 14px; }
+.copy-btn:hover{ background: rgba(255,181,69,0.22); }
+.copy-btn:active{ transform: scale(0.9); }
+.copy-btn.copied{ background: var(--op); color: #0a1210; }
+
+/* =========================================================================
+   BUTTON GRIDS — memory row, scientific grid, main keypad
+   ========================================================================= */
+.btn-row, .sci-grid, .keypad{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.btn{
+  height: 56px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 1.15rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, background var(--transition), box-shadow var(--transition);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.btn:hover{ background: var(--panel-3); }
+.btn:active{ transform: scale(0.94); }
+
+/* press ripple feedback */
+.btn.pressed::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0.16;
+  animation: pop 0.3s ease;
+}
+@keyframes pop{ from{ opacity: 0.28; } to{ opacity: 0; } }
+
+.btn-num{ font-family: var(--font-display); font-size: 1.2rem; }
+
+.btn-op{
+  color: var(--op);
+  background: color-mix(in srgb, var(--op) 12%, var(--panel-2));
+  font-size: 1.3rem;
+}
+.btn-op:hover{ background: color-mix(in srgb, var(--op) 22%, var(--panel-2)); }
+
+.btn-func{ color: var(--muted); font-size: 0.95rem; }
+.btn-func[data-action="clear"]{ color: var(--danger); }
+
+.btn-equals{
+  grid-column: auto;
+  background: linear-gradient(135deg, var(--op), var(--op-strong));
+  color: #0a1210;
+  font-size: 1.4rem;
+  box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--op) 70%, transparent);
+}
+.btn-equals:hover{ filter: brightness(1.08); }
+
+.btn-zero{ grid-column: span 2; justify-content: flex-start; padding-left: 22px; }
+
+.btn-mem{
+  height: 42px;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--op);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+.btn-mem:hover{ border-color: var(--op); background: color-mix(in srgb, var(--op) 8%, transparent); }
+
+.sci-grid{ margin-top: -2px; }
+.btn-sci{
+  height: 42px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.btn-sci:hover{ color: var(--op); }
+
+/* =========================================================================
+   PAPER TAPE / HISTORY PANEL
+   ========================================================================= */
+.tape{
+  width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 30px 60px -30px rgba(0,0,0,0.5);
+  /* torn-paper edge, echoing an adding-machine tape */
+  -webkit-mask-image: linear-gradient(to bottom, black 96%, transparent 100%);
+}
+
+.tape-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px dashed var(--line);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.tape-clear{
+  background: none;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.tape-clear:hover{ color: var(--danger); }
+
+.tape-feed{
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 480px;
+}
+
+.tape-empty{
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+  margin-top: 30px;
+}
+
+.tape-entry{
+  border-bottom: 1px dotted var(--line);
+  padding-bottom: 8px;
+  cursor: pointer;
+  animation: rise 0.3s ease backwards;
+}
+@keyframes rise{ from{ opacity: 0; transform: translateY(6px); } to{ opacity: 1; transform: translateY(0); } }
+
+.tape-entry:hover .entry-result{ color: var(--op); }
+
+.entry-expr{
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: block;
+  word-break: break-all;
+}
+.entry-result{
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  transition: color var(--transition);
+}
+
+/* =========================================================================
+   RESPONSIVE
+   ========================================================================= */
+@media (max-width: 700px){
+  .app{ flex-direction: column-reverse; width: 100%; max-width: 420px; }
+  .panel{ width: 100%; }
+  .tape{
+    width: 100%;
+    max-height: 220px;
+    -webkit-mask-image: none;
+  }
+  .tape-feed{ max-height: 150px; }
+}
+
+@media (max-width: 400px){
+  .btn{ height: 50px; font-size: 1.05rem; }
+  .lcd-result{ font-size: 1.9rem; }
+}
